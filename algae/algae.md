@@ -145,8 +145,13 @@ ggplot(data_long, aes(x = temperature, y = growth, color = light_intensity)) +
   geom_smooth(method = "lm", alpha = 0.1) +
   geom_point() +
   scale_x_continuous(breaks = c(5, 10, 25, 30)) +
-  facet_wrap(~ species) +
-  theme_minimal()
+  facet_wrap(~ species, ncol = 4) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(title = "Growth rate of algae by species",
+       x = "Temperature (degrees celsius)",
+       y = "Growth rate (divisions per day)",
+       color = "Light intensity (lux)")
 ```
 
     ## Warning: Removed 1 rows containing non-finite values (stat_smooth).
@@ -163,7 +168,12 @@ ggplot(data_long, aes(x = temperature, y = growth, color = light_intensity)) +
   geom_violin(aes(group = temperature), alpha = 0.3) +
   geom_jitter(width = 0.4, height = 0) +
   scale_x_continuous(breaks = c(5, 10, 25, 30)) +
-  theme_minimal()
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(title = "Growth rate of algae",
+       x = "Temperature (degrees celsius)",
+       y = "Growth rate (divisions per day)",
+       color = "Light intensity (lux)")
 ```
 
     ## Warning: Removed 1 rows containing non-finite values (stat_smooth).
