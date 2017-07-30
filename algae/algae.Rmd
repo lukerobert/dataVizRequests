@@ -1,0 +1,83 @@
+---
+title: "r/DataVizRequest for u/linkuei-teaparty"
+author: "Luke Davis"
+date: "July 30, 2017"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(XML)
+library(RCurl)
+library(purrr)
+library(tidyr)
+library(stringr)
+library(tibble)
+```
+
+## Getting the Data
+
+The data is stored as an HTML table [here](http://aquatext.com/tables/algaegrwth.htm). I'll parse the table out automatically with the `RCurl` and `XML` packages.
+
+```{r}
+url <- getURL("http://aquatext.com/tables/algaegrwth.htm",
+                 .opts = list(ssl.verifypeer = FALSE))
+tables <- readHTMLTable(url) %>% set_names(c(1, 2, 3))
+big_table_index <- which.max(unlist(map(tables, length)))
+data_raw <- tables[[big_table_index]]
+data_raw
+```
+This looks OK, although it missed temperature because it has merged cells. I'll just add it in manually at a later step.
+
+## Data Cleaning
+The data weirdly has variables as rows and observations as columns, so I'll transpose it before doing anything else. I'm also cleaning up the variable names.
+```{r}
+col_names <- data_raw[, 1] %>% str_replace(" ", "_") %>% 
+  str_replace_all("\\s|\\.", "") %>% str_replace("\\(.*\\)", "") %>% 
+  tolower()
+data <- as.tibble(t(data_raw[, -1]))
+colnames(data) <- col_names
+row.names(data) <- 1:nrow(data)
+data
+```
+Now that the data is in good shape I can add temperature in.
+```{r}
+data$temperature <- unlist(lapply(c(5, 10, 25, 30), rep, 2))
+```
+
+
+## Visualization
+Our goal is to measure "temperature and light intensity and it's effects on growth rate." First we need to transform the data into long shape:
+```{r}
+data_long <- data %>% 
+  select(-species) %>% 
+  mutate_all(as.numeric) %>% 
+  gather(key = "species", value = "growth", -light_intensity, -temperature) %>% 
+  mutate(light_intensity = as.factor(light_intensity))
+```
+
+Because `light_intensity` only has two values I'm going to use it for color groups. Even though temperature only takes on four values it's still useful to treat it as continuous because those four values are not evenly spaced. I'll also add in simple linear fits for each species that should help make it clear if there's any differences in the relationship between temperature and growth rate at different light intensities.
+```{r}
+ggplot(data_long, aes(x = temperature, y = growth, color = light_intensity)) +
+  geom_smooth(method = "lm", alpha = 0.1) +
+  geom_point() +
+  scale_x_continuous(breaks = c(5, 10, 25, 30)) +
+  facet_wrap(~ species) +
+  theme_minimal()
+```
+
+We can also do a version without the species facetting:
+```{r}
+ggplot(data_long, aes(x = temperature, y = growth, color = light_intensity)) +
+  geom_smooth(method = "lm", alpha = 0.1) +
+  geom_violin(aes(group = temperature), alpha = 0.3) +
+  geom_jitter(width = 0.4, height = 0) +
+  scale_x_continuous(breaks = c(5, 10, 25, 30)) +
+  theme_minimal()
+```
+
